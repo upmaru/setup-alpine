@@ -178,39 +178,6 @@ chmod +x "$APK"
 
 
 #-----------------------------------------------------------------------
-if [[ "$INPUT_ARCH" != x86* ]] || [[ "$INPUT_ARCH" != aarch64 ]]; then
-	qemu_arch=$(qemu_arch "$INPUT_ARCH")
-	qemu_cmd="qemu-$qemu_arch"
-
-	group "Install $qemu_cmd emulator"
-
-	if update-binfmts --display $qemu_cmd >/dev/null 2>&1; then
-		info "$qemu_cmd is already installed on the host system"
-
-	else
-		# apt-get is terribly slow - installing qemu-user-static via apt-get
-		# takes anywhere from ten seconds to tens of seconds. This method takes
-		# less than a second.
-		info "Fetching $qemu_cmd from the latest-stable Alpine repository"
-		$APK fetch \
-			--keys-dir "$SCRIPT_DIR"/keys \
-			--repository "$INPUT_MIRROR_URL/latest-stable/community" \
-			--no-progress \
-			--no-cache \
-			$qemu_cmd
-
-		info "Unpacking $qemu_cmd and installing on the host system"
-		unpack_apk -f ./$qemu_cmd-*.apk usr/bin/$qemu_cmd
-		mv usr/bin/$qemu_cmd /usr/local/bin/
-		rm ./$qemu_cmd-*.apk
-
-		info "Registering binfmt for $qemu_arch"
-		update-binfmts --import "$SCRIPT_DIR"/binfmts/$qemu_cmd
-	fi
-fi
-
-
-#-----------------------------------------------------------------------
 group "Initialize Alpine Linux $INPUT_BRANCH ($INPUT_ARCH)"
 
 cd "$rootfs_dir"
