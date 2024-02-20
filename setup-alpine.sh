@@ -68,15 +68,6 @@ endgroup() {
 	echo '::endgroup::'
 }
 
-# Converts Alpine architecture name to the corresponding QEMU name.
-qemu_arch() {
-	case "$1" in
-		x86 | i[3456]86) echo 'i386';;
-		armhf | armv[4-9]) echo 'arm';;
-		*) echo "$1";;
-	esac
-}
-
 # Downloads a file from URL $1 to path $2 and verify its integrity.
 # URL must end with '#!sha256!' followed by a SHA-256 checksum of the file.
 download_file() {
