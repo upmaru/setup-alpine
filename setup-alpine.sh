@@ -2,7 +2,6 @@
 # vim: set ts=4 sw=4:
 #
 # Required environment variables:
-# - INPUT_APK_TOOLS_URL
 # - INPUT_ARCH
 # - INPUT_BRANCH
 # - INPUT_EXTRA_KEYS
@@ -20,6 +19,14 @@ readonly SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 readonly ALPINE_BASE_PKGS='alpine-baselayout apk-tools busybox busybox-suid musl-utils'
 readonly RUNNER_HOME="/home/$SUDO_USER"
 readonly ROOTFS_BASE_DIR="$RUNNER_HOME/rootfs"
+
+apk_tools_url() {
+	case "$1" in
+		x86_64) echo 'https://gitlab.alpinelinux.org/api/v4/projects/5/packages/generic/v2.14.0/x86_64/apk.static#!sha256!1c65115a425d049590bec7c729c7fd88357fbb090a6fc8c31d834d7b0bc7d6f2';;
+		aarch64) echo 'https://gitlab.alpinelinux.org/api/v4/projects/5/packages/generic/v2.14.0/aarch64/apk.static#!sha256!d49a63b8b6780fc1342d3e7e14862aa006c30bafbf74beec8e1dfe99e6f89471';;
+		*) echo "$1";;
+	esac
+}
 
 
 err_handler() {
@@ -110,13 +117,6 @@ mount_bind() {
 
 
 #============================  M a i n  ============================#
-
-case "$INPUT_APK_TOOLS_URL" in
-	https://*\#\!sha256\!* | http://*\#\!sha256\!*) ;;  # valid
-	*) die 'Invalid input parameter: apk-tools-url' \
-	       "The value must start with https:// or http:// and end with '#!sha256!' followed by a SHA-256 hash of the file to be downloaded, but got: $INPUT_APK_TOOLS_URL"
-esac
-
 case "$INPUT_ARCH" in
 	x86_64 | x86 | aarch64 | armhf | armv7 | ppc64le | riscv64 | s390x) ;;  # valid
 	*) die 'Invalid input parameter: arch' \
@@ -163,8 +163,10 @@ group 'Download static apk-tools'
 
 APK="$RUNNER_TEMP/apk"
 
-info "Downloading ${INPUT_APK_TOOLS_URL%\#*}"
-download_file "$INPUT_APK_TOOLS_URL" "$APK"
+apk_tools_url=$(apk_tools_url "$INPUT_ARCH")
+
+info "Downloading ${apk_tools_url%\#*}"
+download_file "$apk_tools_url" "$APK"
 chmod +x "$APK"
 
 
