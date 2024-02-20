@@ -178,7 +178,7 @@ chmod +x "$APK"
 
 
 #-----------------------------------------------------------------------
-if [[ "$INPUT_ARCH" != x86* ]]; then
+if [[ "$INPUT_ARCH" != x86* || "$INPUT_ARCH" != aarch64 ]]; then
 	qemu_arch=$(qemu_arch "$INPUT_ARCH")
 	qemu_cmd="qemu-$qemu_arch"
 
