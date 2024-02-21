@@ -118,9 +118,9 @@ mount_bind() {
 
 #============================  M a i n  ============================#
 case "$INPUT_ARCH" in
-	x86_64 | x86 | aarch64 | armhf | armv7 | ppc64le | riscv64 | s390x) ;;  # valid
+	x86_64 | aarch64) ;;  # valid
 	*) die 'Invalid input parameter: arch' \
-	       "Expected one of: x86_64, x86, aarch64, armhf, armv7, ppc64le, riscv64, s390x, but got: $INPUT_ARCH."
+	       "Expected one of: x86_64, aarch64 but got: $INPUT_ARCH."
 esac
 
 case "$INPUT_BRANCH" in
