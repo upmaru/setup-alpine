@@ -343,3 +343,7 @@ endgroup
 
 echo "root-path=$rootfs_dir" >> $GITHUB_OUTPUT
 echo "$rootfs_dir/abin" >> $GITHUB_PATH
+
+if [ "${GITHUB_STATE:-}" ]; then
+	echo "root_path=$rootfs_dir" >> "$GITHUB_STATE"
+fi
