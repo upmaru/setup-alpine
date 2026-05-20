@@ -8,17 +8,26 @@ branding:
 inputs:
   apk-tools-url:
     description: >
-      URL of the apk-tools static binary to use. It must end with `#!sha256!` followed by a SHA-256
-      hash of the file.
+      URL of the apk-tools static binary to use, or `auto` to select a pinned URL for the current
+      runner architecture. Custom URLs must end with `#!sha256!` followed by a SHA-256 hash of the file.
       This should normally be left at the default value.
     required: false
-    default: https://alpinelinux.opsmaru.com/api/v4/projects/5/packages/generic/v2.14.10/x86_64/apk.static#!sha256!34bb1a96f0258982377a289392d4ea9f3f4b767a4bb5806b1b87179b79ad8a1c
+    default: auto
   arch:
     description: >
-      CPU architecture to emulate using QEMU. Allowed values are: `x86_64` (native), `x86` (native),
-      `aarch64`, `armhf` (armv6 with hard-float), `armv7`, `loongarch64` (available since v3.21), `ppc64le`, `riscv64` (available since v3.20), and `s390x`
+      CPU architecture to install. If the selected architecture is not natively runnable on the
+      current runner, QEMU is used by default. Allowed values are: `x86_64` (native), `x86`
+      (native), `aarch64`, `armhf` (armv6 with hard-float), `armv7`, `loongarch64` (available
+      since v3.21), `ppc64le`, `riscv64` (available since v3.20), and `s390x`
     required: false
     default: x86_64
+  setup-qemu:
+    description: >
+      Whether to install and register QEMU when the selected architecture needs emulation on the
+      current runner. Set to `false` only when using a native compatible runner, such as
+      `ubuntu-24.04-arm` for `aarch64`; otherwise the action will fail early.
+    required: false
+    default: 'true'
   branch:
     description: Alpine branch (aka release) to install (e.g. `v3.15`, `latest-stable`, `edge`).
     required: false

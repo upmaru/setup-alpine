@@ -49,17 +49,24 @@ _See <<examples, more examples>>…_
 === Inputs
 
 apk-tools-url::
-URL of the apk-tools static binary to use.
-It must end with `#!sha256!` followed by a SHA-256 hash of the file.
+URL of the apk-tools static binary to use, or `auto` to select a pinned URL for the current runner architecture.
+Custom URLs must end with `#!sha256!` followed by a SHA-256 hash of the file.
 This should normally be left at the default value.
 +
-Default: _see link:action.yml[]_
+Default: `auto`
 
 [[arch]] arch::
-CPU architecture to emulate using https://www.qemu.org/docs/master/user/main.html[QEMU user space emulator].
+CPU architecture to install.
+When the selected architecture is not natively runnable on the host, the action uses https://www.qemu.org/docs/master/user/main.html[QEMU user space emulator] by default.
 Allowed values are: `x86_64` (native), `x86` (native), `aarch64`, `armhf` footnote:[armhf is armv6 with hard-float.], `armv7`, `loongarch64` footnote:[loongarch64 is available since v3.21.], `ppc64le`, `riscv64` footnote:[riscv64 is available since v3.20.], and `s390x`.
 +
 Default: `x86_64`
+
+setup-qemu::
+Whether to install and register QEMU when the selected <<arch>> needs emulation on the current runner.
+Set this to `false` only when using a native compatible runner, such as `ubuntu-24.04-arm` or `ubuntu-22.04-arm` for `aarch64`; otherwise the action will fail early.
++
+Default: `true`
 
 branch::
 Alpine branch (aka release) to install: `vMAJOR.MINOR`, `latest-stable`, or `edge`.
@@ -172,6 +179,24 @@ steps:
       branch: {alpine-latest}
 
   - name: Run script inside Alpine chroot with aarch64 emulation
+    run: uname -m
+    shell: alpine.sh {0}
+----
+
+=== Set up Alpine aarch64 on a native ARM runner
+
+[source, yaml, subs="+attributes"]
+----
+runs-on: ubuntu-24.04-arm
+steps:
+  - name: Setup Alpine Linux {alpine-latest} for aarch64
+    uses: {action-ref}
+    with:
+      arch: aarch64
+      branch: {alpine-latest}
+      setup-qemu: false
+
+  - name: Run script inside Alpine chroot
     run: uname -m
     shell: alpine.sh {0}
 ----

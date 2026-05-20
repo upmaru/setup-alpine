@@ -9,6 +9,7 @@ const inputNames = {
   'extra-repositories': 'INPUT_EXTRA_REPOSITORIES',
   'mirror-url': 'INPUT_MIRROR_URL',
   packages: 'INPUT_PACKAGES',
+  'setup-qemu': 'INPUT_SETUP_QEMU',
   'shell-name': 'INPUT_SHELL_NAME',
   volumes: 'INPUT_VOLUMES',
 };
