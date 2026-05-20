@@ -9,6 +9,7 @@
 # - INPUT_EXTRA_REPOSITORIES
 # - INPUT_MIRROR_URL
 # - INPUT_PACKAGES
+# - INPUT_SETUP_QEMU
 # - INPUT_SHELL_NAME
 # - INPUT_VOLUMES
 #
@@ -72,8 +73,38 @@ endgroup() {
 qemu_arch() {
 	case "$1" in
 		x86 | i[3456]86) echo 'i386';;
+		arm64) echo 'aarch64';;
 		armhf | armv[4-9]) echo 'arm';;
 		*) echo "$1";;
+	esac
+}
+
+# Returns 0 if arch $1 is not compatible with the host architecture and needs
+# to be emulated.
+needs_emulator() {
+	local target="$(qemu_arch "$1")"
+	local host="$(qemu_arch "$(uname -m)")"
+
+	[ "$target" = "$host" ] && return 1
+	[ "$host" = x86_64 ] && [ "$target" = i386 ] && return 1
+	return 0
+}
+
+# Returns a pinned apk.static URL for the host architecture.
+auto_apk_tools_url() {
+	local host_arch="$(uname -m)"
+
+	case "$host_arch" in
+		x86_64)
+			echo 'https://alpinelinux.opsmaru.net/api/v4/projects/5/packages/generic/v2.14.10/x86_64/apk.static#!sha256!34bb1a96f0258982377a289392d4ea9f3f4b767a4bb5806b1b87179b79ad8a1c'
+			;;
+		aarch64 | arm64)
+			echo 'https://alpinelinux.opsmaru.net/api/v4/projects/5/packages/generic/v2.14.10/aarch64/apk.static#!sha256!e471d35aa221d031abe9b6288aede12a8e9f1a398954e5a2e1d1bce1727b4ef4'
+			;;
+		*)
+			die 'Invalid input parameter: apk-tools-url' \
+			    "Cannot automatically select apk.static for host architecture $host_arch. Set apk-tools-url to an http(s) URL ending with '#!sha256!' followed by a SHA-256 hash."
+			;;
 	esac
 }
 
@@ -120,6 +151,10 @@ mount_bind() {
 
 #============================  M a i n  ============================#
 
+if [ "$INPUT_APK_TOOLS_URL" = auto ]; then
+	INPUT_APK_TOOLS_URL="$(auto_apk_tools_url)"
+fi
+
 case "$INPUT_APK_TOOLS_URL" in
 	https://*\#\!sha256\!* | http://*\#\!sha256\!*) ;;  # valid
 	*) die 'Invalid input parameter: apk-tools-url' \
@@ -127,15 +162,21 @@ case "$INPUT_APK_TOOLS_URL" in
 esac
 
 case "$INPUT_ARCH" in
-	x86_64 | x86 | aarch64 | armhf | armv7 | ppc64le | riscv64 | s390x) ;;  # valid
+	x86_64 | x86 | aarch64 | armhf | armv7 | loongarch64 | ppc64le | riscv64 | s390x) ;;  # valid
 	*) die 'Invalid input parameter: arch' \
-	       "Expected one of: x86_64, x86, aarch64, armhf, armv7, ppc64le, riscv64, s390x, but got: $INPUT_ARCH."
+	       "Expected one of: x86_64, x86, aarch64, armhf, armv7, loongarch64, ppc64le, riscv64, s390x, but got: $INPUT_ARCH."
 esac
 
 case "$INPUT_BRANCH" in
 	v[0-9].[0-9]* | edge | latest-stable) ;;  # valid
 	*) die 'Invalid input parameter: branch' \
 	       "Expected 'v[0-9].[0-9]+' (e.g. v3.15), edge, or latest-stable, but got: $INPUT_BRANCH."
+esac
+
+case "$INPUT_SETUP_QEMU" in
+	true | false) ;;  # valid
+	*) die 'Invalid input parameter: setup-qemu' \
+	       "Expected true or false, but got: $INPUT_SETUP_QEMU."
 esac
 
 for path in $INPUT_EXTRA_KEYS; do
@@ -148,6 +189,11 @@ done
 if ! expr "$INPUT_SHELL_NAME" : [a-zA-Z][a-zA-Z0-9_.~+@%-]*$ >/dev/null; then
 	die 'Invalid input parameter: shell-name' \
 	    "Expected value matching regex ^[a-zA-Z][a-zA-Z0-9_.~+@%-]*$, but got: $INPUT_SHELL_NAME."
+fi
+
+if needs_emulator "$INPUT_ARCH" && [ "$INPUT_SETUP_QEMU" = false ]; then
+	die 'QEMU setup is disabled' \
+	    "arch=$INPUT_ARCH is not natively runnable on this host ($(uname -m)). Use a native compatible runner, for example runs-on: ubuntu-24.04-arm for arch=aarch64, or set setup-qemu to true."
 fi
 
 
@@ -178,11 +224,18 @@ chmod +x "$APK"
 
 
 #-----------------------------------------------------------------------
-if [[ "$INPUT_ARCH" != x86* ]]; then
+if needs_emulator "$INPUT_ARCH" && [ "$INPUT_SETUP_QEMU" = true ]; then
 	qemu_arch=$(qemu_arch "$INPUT_ARCH")
 	qemu_cmd="qemu-$qemu_arch"
 
 	group "Install $qemu_cmd emulator"
+
+	# TODO: Consider replacing it with a simple shell script to speed-up
+	#  the installation.
+	if ! command -V update-binfmts >/dev/null 2>&1; then
+		info 'Installing binfmt-support from Ubuntu repository'
+		apt-get install --no-install-recommends -y binfmt-support
+	fi
 
 	if update-binfmts --display $qemu_cmd >/dev/null 2>&1; then
 		info "$qemu_cmd is already installed on the host system"
@@ -325,3 +378,7 @@ endgroup
 
 echo "root-path=$rootfs_dir" >> $GITHUB_OUTPUT
 echo "$rootfs_dir/abin" >> $GITHUB_PATH
+
+if [ "${GITHUB_STATE:-}" ]; then
+	echo "root_path=$rootfs_dir" >> "$GITHUB_STATE"
+fi
